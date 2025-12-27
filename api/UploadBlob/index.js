@@ -2,22 +2,29 @@ const { BlobServiceClient } = require('@azure/storage-blob');
 const multipart = require('parse-multipart');
 
 module.exports = async function (context, req) {
-    // 1. Get Connection String from App Settings
-    const connectionString = process.env.STORAGE_CONNECTION;
-    const blobServiceClient = BlobServiceClient.fromConnectionString(connectionString);
-    const containerClient = blobServiceClient.getContainerClient("uploads");
+    try {
+        const connectionString = process.env.STORAGE_CONNECTION;
+        const blobServiceClient = BlobServiceClient.fromConnectionString(connectionString);
+        const containerClient = blobServiceClient.getContainerClient("uploads");
 
-    // 2. Parse the file from the request
-    const bodyBuffer = Buffer.from(req.body);
-    const boundary = multipart.getBoundary(req.headers['content-type']);
-    const parts = multipart.Parse(bodyBuffer, boundary);
+        // IMPORTANT: Ensure the body exists
+        if (!req.body || !req.headers['content-type']) {
+            context.res = { status: 400, body: "Missing file data" };
+            return;
+        }
 
-    const file = parts[0]; // The actual file
-    const fileName = file.filename;
+        const boundary = multipart.getBoundary(req.headers['content-type']);
+        const parts = multipart.Parse(req.body, boundary);
+        const file = parts[0];
 
-    // 3. Upload to Azure
-    const blockBlobClient = containerClient.getBlockBlobClient(fileName);
-    await blockBlobClient.upload(file.data, file.data.length);
+        const blockBlobClient = containerClient.getBlockBlobClient(file.filename);
+        
+        // Use the buffer directly from the parsed part
+        await blockBlobClient.upload(file.data, file.data.length);
 
-    context.res = { body: { message: "File uploaded!" } };
+        context.res = { body: { message: "File uploaded successfully!" } };
+    } catch (err) {
+        context.log.error(err);
+        context.res = { status: 500, body: `Error: ${err.message}` };
+    }
 };
