@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<body>
+    <h2>Upload Files (Photos, Videos, PDFs)</h2>
+    <input type="file" id="filePicker">
+    <button onclick="uploadFile()">Upload to Azure</button>
+    <p id="message"></p>
+
+    <script>
+        async function uploadFile() {
+            const fileInput = document.getElementById('filePicker');
+            const message = document.getElementById('message');
+            
+            if (fileInput.files.length === 0) return alert("Select a file first");
+
+            const file = fileInput.files[0];
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('fileName', file.name);
+
+            message.innerText = "Uploading...";
+
+            const response = await fetch('/api/UploadBlob', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (response.ok) {
+                message.innerText = "Upload Successful: " + file.name;
+            } else {
+                message.innerText = "Upload Failed.";
+            }
+        }
+    </script>
+</body>
+</html>
